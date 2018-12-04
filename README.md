@@ -1,1 +1,3 @@
-# lemon
+# LemonEventEmitter
+
+`npm test`
