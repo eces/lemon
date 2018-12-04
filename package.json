@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "ava"
+    "test": "DEBUG_COLORS=true ava"
   },
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
     "ava": "^0.25.0"
   },
   "dependencies": {
+    "debug": "^4.1.0",
     "debugs": "^1.0.11"
   },
   "ava": {
@@ -28,6 +29,6 @@
     ]
   },
   "debugs": [
-    "lemon:*"
+    "lemon*"
   ]
 }
