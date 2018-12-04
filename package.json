@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ava"
   },
   "repository": {
     "type": "git",
@@ -15,5 +15,16 @@
   "bugs": {
     "url": "https://github.com/eces/lemon/issues"
   },
-  "homepage": "https://github.com/eces/lemon#readme"
+  "homepage": "https://github.com/eces/lemon#readme",
+  "devDependencies": {
+    "ava": "^0.25.0"
+  },
+  "dependencies": {
+    "debugs": "^1.0.11"
+  },
+  "ava": {
+    "files": [
+      "test/*.js"
+    ]
+  }
 }
