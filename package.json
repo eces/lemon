@@ -26,5 +26,8 @@
     "files": [
       "test/*.js"
     ]
-  }
+  },
+  "debugs": [
+    "lemon:*"
+  ]
 }

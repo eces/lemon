@@ -1,3 +1,4 @@
 .vscode
+.debugs
 node_modules
 temp
