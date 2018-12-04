@@ -1,0 +1,19 @@
+{
+  "name": "lemon",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eces/lemon.git"
+  },
+  "author": "eces92@gmail.com",
+  "license": "SEE LICENSE IN LICENSE",
+  "bugs": {
+    "url": "https://github.com/eces/lemon/issues"
+  },
+  "homepage": "https://github.com/eces/lemon#readme"
+}
