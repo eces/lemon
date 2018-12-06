@@ -73,11 +73,11 @@ test.cb('with ready scoped on', (t) => {
       api.to('@scope.on.gentle').emit('send sms', text)
     }, 500);
     
-    setTimeout(() => {
-      t.fail('timeout')
-      t.end()
-    }, 3000)
   })
+  setTimeout(() => {
+    t.fail('timeout')
+    t.end()
+  }, 3000)
 })
 
 test.cb('without ready scoped on', (t) => {
