@@ -2,7 +2,10 @@
  * EventEmitter
  */
 require('debugs/init')
-const debug = require('debug')('lemon:ee')
+const debug = require('debug')('lemon')
+const debugScope = require('debug')('lemon:scope')
+const debugEmit = require('debug')('lemon:emit')
+const debugOn = require('debug')('lemon:on')
 const isFunction = require('lodash/isFunction')
 const crypto = require('crypto')
 
@@ -24,8 +27,9 @@ class LemonEventEmitter extends EventEmitter {
     this.on('backend connected', error => {
       this.backend_connected = true
     })
-    this.on('message', (channel_name, event_name, message) => {
-      this.emit(`${channel_name}:${event_name}`, message)
+    this.on('message', ({channel_name, event_name, json}) => {
+      debugScope('>final reach', `${channel_name}:${event_name}`, json)
+      super.emit(`${channel_name}:${event_name}`, json)
     })
   }
 
@@ -40,39 +44,37 @@ class LemonEventEmitter extends EventEmitter {
       // scope, middleware
     } 
   }
-  emit(eventName, ...args) {
+  emit(event_name, ...args) {
     if (this.channel_name) {
-      debug(`emit to ${this.channel_name}`)
-      
-      // todo enqueue
-
+      const channel_name = this.channel_name
       this.channel_name = undefined
-      return false
+      debugEmit(`emit to ${channel_name}`)
+      
+      if (this.rsmq) {
+        debugEmit('use rsmq')
+        const json = JSON.stringify(args[0])
+        debugEmit('enqueue with ', { channel_name, event_name, json })
+        this.emit('enqueue', { channel_name, event_name, json })
+      } else {
+        return super.emit(event_name, ...args)
+      }
     } else {
-      return super.emit(eventName, ...args)
+      return super.emit(event_name, ...args)
     }
   }
   on(event_name, listener) {
     if (this.channel_name) {
-      debug(`on of ${this.channel_name}`)
       const channel_name = this.channel_name
-      if (this.rsmq) {
-        debug('use rsmq')
-        const that = this
-        this.rsmq.createQueue({qname: channel_name}, (err, r) => {
-          if (err && err.name != 'queueExists') {
-            return that.emit('error', err)
-          }
-          if (r === 1) {
-            debug(`queue created ${channel_name}`)
-          }
-          this.emit('listen', {channel_name})
-
-          return super.on(`${channel_name}:${event_name}`, listener)
-        })
-      }
       this.channel_name = undefined
-      return false
+      debugOn(`on of ${channel_name}`)
+
+      super.on(`${channel_name}:${event_name}`, listener)
+
+      if (this.rsmq) {
+        debugOn('use rsmq')
+        debugOn(`${channel_name}:${event_name} listener`)
+        this.emit('listen', {channel_name})
+      }
     } else {
       return super.on(event_name, listener)
     }
@@ -89,6 +91,12 @@ class LemonEventEmitter extends EventEmitter {
   }
   of(channel_name) {
     return this.to(channel_name)
+  }
+
+  purge() {
+    const channel_name = this.channel_name
+    this.channel_name = undefined
+    super.emit('purge', channel_name)
   }
 }
 
