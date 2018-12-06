@@ -4,6 +4,7 @@
 require('debugs/init')
 const debug = require('debug')('lemon:ee')
 const isFunction = require('lodash/isFunction')
+const crypto = require('crypto')
 
 class LemonError extends Error {}
 
@@ -23,6 +24,9 @@ class LemonEventEmitter extends EventEmitter {
     this.on('backend connected', error => {
       this.backend_connected = true
     })
+    this.on('message', (channel_name, event_name, message) => {
+      this.emit(`${channel_name}:${event_name}`, message)
+    })
   }
 
   use(...args) {
@@ -40,24 +44,47 @@ class LemonEventEmitter extends EventEmitter {
     if (this.channel_name) {
       debug(`emit to ${this.channel_name}`)
       
+      // todo enqueue
+
       this.channel_name = undefined
       return false
     } else {
       return super.emit(eventName, ...args)
     }
   }
-  on(eventName, listener) {
+  on(event_name, listener) {
     if (this.channel_name) {
       debug(`on of ${this.channel_name}`)
-      
+      const channel_name = this.channel_name
+      if (this.rsmq) {
+        debug('use rsmq')
+        const that = this
+        this.rsmq.createQueue({qname: channel_name}, (err, r) => {
+          if (err && err.name != 'queueExists') {
+            return that.emit('error', err)
+          }
+          if (r === 1) {
+            debug(`queue created ${channel_name}`)
+          }
+          this.emit('listen', {channel_name})
+
+          return super.on(`${channel_name}:${event_name}`, listener)
+        })
+      }
       this.channel_name = undefined
       return false
     } else {
-      return super.on(eventName, listener)
+      return super.on(event_name, listener)
     }
   }
+
+  /**
+   * 
+   * selector
+   */
   to(channel_name) {
-    this.channel_name = channel_name
+    this.channel_name = crypto.createHash('sha1')
+      .update(channel_name).digest('hex')
     return this
   }
   of(channel_name) {

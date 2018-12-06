@@ -8,6 +8,9 @@ const Redis = (_options) => {
   const delay = 1
 
   return (that) => {
+    const Redis = require('ioredis')
+    const redis = new Redis(options)
+
     const rsmq = new RSMQ(options)
     rsmq.createQueue({qname}, (err, r1) => {
       if (err.name != 'queueExists') {
@@ -25,6 +28,25 @@ const Redis = (_options) => {
         that.has_backend = true
         that.on('purge', () => {
           debug(`events purged on ${this.channel_name}`)
+        })
+        that.on('listen', ({channel_name}) => {
+          const _channel_name = channel_name
+          debug(`events listening on ${_channel_name}`)
+          redis.subscribe(`${options.ns}:rt:${_channel_name}`, (err, count) => {
+            debug('count ', count)
+            that.emit('dequeue', _channel_name)
+          })
+        })
+        that.on('dequeue', (channel_name) => {
+          that.rsmq.receiveMessage({
+            qname: channel_name,
+          }, (message) => {
+            if (message === null) return
+            
+            debug('message', message)
+            const [event_name, json] = JSON.parse(message)
+            that.emit('message', {channel_name, event_name, json})
+          })
         })
         that.emit('backend connected')
       })
