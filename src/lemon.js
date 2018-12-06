@@ -19,6 +19,7 @@ class LemonEventEmitter extends EventEmitter {
     this.lemonized = true
     this.has_backend = false
     this.backend_connected = false
+    this.cname_table = {}
     this.on('error', error => {
       if (this.listeners('error').length === 0) {
         debug(error)
@@ -28,7 +29,7 @@ class LemonEventEmitter extends EventEmitter {
       this.backend_connected = true
     })
     this.on('message', ({channel_name, event_name, json}) => {
-      debugScope('>final reach', `${channel_name}:${event_name}`, json)
+      debugScope('> final reach', `${this.cname(channel_name)}:${event_name}`, json)
       super.emit(`${channel_name}:${event_name}`, json)
     })
   }
@@ -48,12 +49,10 @@ class LemonEventEmitter extends EventEmitter {
     if (this.channel_name) {
       const channel_name = this.channel_name
       this.channel_name = undefined
-      debugEmit(`emit to ${channel_name}`)
+      debugEmit(`emit to ${this.cname(channel_name)}`)
       
       if (this.rsmq) {
-        debugEmit('use rsmq')
         const json = JSON.stringify(args[0])
-        debugEmit('enqueue with ', { channel_name, event_name, json })
         this.emit('enqueue', { channel_name, event_name, json })
       } else {
         return super.emit(event_name, ...args)
@@ -66,13 +65,12 @@ class LemonEventEmitter extends EventEmitter {
     if (this.channel_name) {
       const channel_name = this.channel_name
       this.channel_name = undefined
-      debugOn(`on of ${channel_name}`)
+      debugOn(`on of ${this.cname(channel_name)}`)
 
       super.on(`${channel_name}:${event_name}`, listener)
 
       if (this.rsmq) {
-        debugOn('use rsmq')
-        debugOn(`${channel_name}:${event_name} listener`)
+        debugOn(`${this.cname(channel_name)}:${event_name} listener`)
         this.emit('listen', {channel_name})
       }
     } else {
@@ -87,6 +85,7 @@ class LemonEventEmitter extends EventEmitter {
   to(channel_name) {
     this.channel_name = crypto.createHash('sha1')
       .update(channel_name).digest('hex')
+    this.cname_table[this.channel_name] = channel_name
     return this
   }
   of(channel_name) {
@@ -97,6 +96,10 @@ class LemonEventEmitter extends EventEmitter {
     const channel_name = this.channel_name
     this.channel_name = undefined
     super.emit('purge', channel_name)
+  }
+
+  cname(qname) {
+    return this.cname_table[qname] || '(?)'
   }
 }
 

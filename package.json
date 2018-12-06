@@ -32,6 +32,11 @@
     ]
   },
   "debugs": [
-    "lemon*"
+    "lemon*",
+    "lemon",
+    "lemon:on",
+    "lemon:emit",
+    "lemon:scope",
+    "lemon:redis"
   ]
 }
