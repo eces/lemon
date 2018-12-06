@@ -37,10 +37,31 @@ class LemonEventEmitter extends EventEmitter {
     } 
   }
   emit(eventName, ...args) {
-    return super.emit(eventName, ...args)
+    if (this.channel_name) {
+      debug(`emit to ${this.channel_name}`)
+      
+      this.channel_name = undefined
+      return false
+    } else {
+      return super.emit(eventName, ...args)
+    }
   }
   on(eventName, listener) {
-    return super.on(eventName, listener)
+    if (this.channel_name) {
+      debug(`on of ${this.channel_name}`)
+      
+      this.channel_name = undefined
+      return false
+    } else {
+      return super.on(eventName, listener)
+    }
+  }
+  to(channel_name) {
+    this.channel_name = channel_name
+    return this
+  }
+  of(channel_name) {
+    return this.to(channel_name)
   }
 }
 

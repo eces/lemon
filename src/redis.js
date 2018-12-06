@@ -23,6 +23,9 @@ const Redis = (_options) => {
         }
         that.rsmq = rsmq
         that.has_backend = true
+        that.on('purge', () => {
+          debug(`events purged on ${this.channel_name}`)
+        })
         that.emit('backend connected')
       })
     })
