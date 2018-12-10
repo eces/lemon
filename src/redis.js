@@ -21,10 +21,9 @@ const Redis = (_options) => {
       const count = +message || 0
       const [,,channel_name] = subscribe_key.split(':')
       debug('on message', that.cname(channel_name))
-      for (let i=0; i<message; i++) {
-        // debug(i)
+      setTimeout(() => {
         that.emit('dequeue', channel_name)
-      }
+      }, 1000)
     })
     
     that.rsmq = rsmq
@@ -102,12 +101,12 @@ const Redis = (_options) => {
           }
           listening_table[channel_name] = true
           debugOn(`emit ${_channel_name}:ready`)
-          that.on(`${_channel_name}:ready`, () => {
-            setInterval(() => {
-              debug('scheduled dequeue on', _channel_name)
-              that.emit('dequeue', _channel_name)
-            }, options.vt * 1000)
-          })
+          // that.on(`${_channel_name}:ready`, () => {
+          //   setInterval(() => {
+          //     debug('scheduled dequeue on', _channel_name)
+          //     that.emit('dequeue', _channel_name)
+          //   }, options.vt * 1000 * 5)
+          // })
           that.emit(`${_channel_name}:ready`)
 
           debugOn(`try dequeue for ${that.cname(_channel_name)}`)
@@ -116,7 +115,7 @@ const Redis = (_options) => {
       })
     })
     that.on('dequeue', (channel_name) => {
-      debugOn('dequeue with ', that.cname(channel_name))
+      debugOn('dequeue with', that.cname(channel_name))
       that.rsmq.receiveMessage({
         qname: channel_name,
         vt: options.vt,
