@@ -9,9 +9,14 @@ const LemonRedis = LemonEventEmitter.Redis({
   host: '127.0.0.1',
   port: 6379,
   ns: 'lemon-multi',
+  vt: 3,
+  delay: 1,
 })
 
-test.cb.skip('user -> {notify, stat} manager', t => {
+test.cb('user -> {notify, stat} manager', t => {
+  t.plan(2)
+  let count = 0
+
   const notifyManager = new LemonEventEmitter()
   notifyManager.on('error', error => {
     t.fail(error)
@@ -33,26 +38,44 @@ test.cb.skip('user -> {notify, stat} manager', t => {
   api.use(LemonRedis)
 
   // clean
-  api.to('@user').purge()
+  api.purge('@user')
 
   // user created
-  api.to('@user').emit('created', {
+  api.publish('@user created', {
     id: 1000,
     name: 'Hans',
-  })
+  }, {delay: 1})
   
   // user updated
-  api.to('@user').emit('balance updated', {
+  api.publish('@user balance updated', {
     id: 1000,
+  }, {delay: 1})
+
+  setInterval(() => {
+    api.emit('status', {channel_name: '@user'})
+  }, 1000)
+  api.on('status:result', (err, r) => {
+    debug('status:result', err, r.MessagesAvailable, r.MessagesInFlight)
   })
+
+  setTimeout(() => {
+    notifyManager.subscribe('@user created', ({id, name}, done) => {
+      t.pass()
+      debug(`send email: ID=${id} Name=${name}`)
+      
+      done()
+      if (++count > 1) t.end()
+    })
+    
+    notifyManager.subscribe('@user balance updated', ({id}, done) => {
+      t.pass()
+      debug(`query sum of current balance: ID=${id}`)
+      
+      done()
+      if (++count > 1) t.end()
+    })
+  }, 100)
   
-  notifyManager.of('@user').on('created', ({id, name}) => {
-    debug(`send email: ID=${id} Name=${name}`)
-  })
-  
-  notifyManager.of('@user').on('balance updated', ({id}) => {
-    debug(`query sum of current balance: ID=${id}`)
-  })
 
   setTimeout(() => {
     t.fail('timeout')

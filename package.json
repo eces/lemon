@@ -37,6 +37,7 @@
     "lemon:on",
     "lemon:emit",
     "lemon:scope",
+    "lemon:test",
     "lemon:redis"
   ]
 }

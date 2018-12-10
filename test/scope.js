@@ -6,7 +6,10 @@ const Promise = require('bluebird')
 
 const LemonEventEmitter = require('../index.js')
 
-const api = new LemonEventEmitter()
+const api = new LemonEventEmitter({
+  vt: 1,
+  delay: 0,
+})
 
 test.before( async (t) => {
   api.on('error', error => {
@@ -45,53 +48,55 @@ test.afterEach('info', t => {
   // debug(api.cname)
 })
 
-test('scoped emit', async t => {
-  t.true(api.channel_name === undefined)
-  api.to('@scope.emit')
-  t.true(api.channel_name !== undefined)
-  api.to('@scope.emit').emit('send sms')
-  t.true(api.channel_name === undefined)
-  t.pass()
-})
+// test('scoped emit', async t => {
+//   t.true(api.channel_name === undefined)
+//   api.to('@scope.emit')
+//   t.true(api.channel_name !== undefined)
+//   api.to('@scope.emit').emit('send sms')
+//   t.true(api.channel_name === undefined)
+//   t.pass()
+// })
 
-test.cb('with ready scoped on', (t) => {
+test.only.cb('with ready scoped on', (t) => {
   t.plan(2)
 
-  api.to('@scope.on.gentle').purge()
-  api.to('@scope.on.gentle').on('ready', () => {
+  api.purge('@scope.on.gentle')
+  api.subscribe('@scope.on.gentle ready', () => {
     const text = 'Hello 💩'
     let recv = 0
 
-    api.to('@scope.on.gentle').on('send sms', (d) => {
+    api.subscribe('@scope.on.gentle send sms', (d, done) => {
       t.is(d, text)
+      done()
       if (++recv == 2) {
         t.end()
       }
     })
-    api.to('@scope.on.gentle').emit('send sms', text)
+    api.publish('@scope.on.gentle send sms', text)
     setTimeout(() => {
-      api.to('@scope.on.gentle').emit('send sms', text)
+      api.publish('@scope.on.gentle send sms', text)
     }, 500);
     
   })
   setTimeout(() => {
     t.fail('timeout')
     t.end()
-  }, 3000)
+  }, 5000)
 })
 
 test.cb('without ready scoped on', (t) => {
-  api.to('@scope.on.cool').purge()
+  api.purge('@scope.on.cool')
   
   const text = 'Hello 💩'
-  api.to('@scope.on.cool').emit('send sms', text)
-  api.to('@scope.on.cool').on('send sms', (d) => {
+  api.publish('@scope.on.cool send sms', text)
+  api.subscribe('@scope.on.cool send sms', (d, done) => {
     t.is(d, text)
     t.end()
+    done()
   })
 
   setTimeout(() => {
     t.fail('timeout')
     t.end()
-  }, 3000)
+  }, 5000)
 })

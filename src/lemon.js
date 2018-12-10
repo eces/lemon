@@ -28,9 +28,14 @@ class LemonEventEmitter extends EventEmitter {
     this.on('backend connected', error => {
       this.backend_connected = true
     })
-    this.on('message', ({channel_name, event_name, json}) => {
+    this.on('message', ({id, channel_name, event_name, json}, done) => {
       debugScope('> final reach', `${this.cname(channel_name)}:${event_name}`, json)
-      super.emit(`${channel_name}:${event_name}`, json)
+      const _id = id
+      super.emit(`${channel_name}:${event_name}`, json, () => {
+        const id = _id
+        this.emit('ack', {channel_name, id})
+        done()
+      })
     })
   }
 
@@ -45,36 +50,70 @@ class LemonEventEmitter extends EventEmitter {
       // scope, middleware
     } 
   }
-  emit(event_name, ...args) {
-    if (this.channel_name) {
-      const channel_name = this.channel_name
-      this.channel_name = undefined
-      debugEmit(`emit to ${this.cname(channel_name)}`)
+  // emit(event_name, ...args) {
+  //   if (this.channel_name) {
+  //     const channel_name = this.channel_name
+  //     this.channel_name = undefined
+  //     debugEmit(`emit to ${this.cname(channel_name)}`)
       
-      if (this.rsmq) {
-        const json = JSON.stringify(args[0])
-        this.emit('enqueue', { channel_name, event_name, json })
-      } else {
-        return super.emit(event_name, ...args)
-      }
+  //     if (this.rsmq) {
+  //       const json = JSON.stringify(args[0])
+  //       this.emit('enqueue', { channel_name, event_name, json })
+  //     } else {
+  //       return super.emit(event_name, ...args)
+  //     }
+  //   } else {
+  //     return super.emit(event_name, ...args)
+  //   }
+  // }
+  // on(event_name, listener) {
+  //   if (this.channel_name) {
+  //     const channel_name = this.channel_name
+  //     this.channel_name = undefined
+  //     debugOn(`on of ${this.cname(channel_name)}`)
+
+  //     super.on(`${channel_name}:${event_name}`, listener)
+
+  //     if (this.rsmq) {
+  //       debugOn(`${this.cname(channel_name)}:${event_name} listener`)
+  //       this.emit('listen', {channel_name})
+  //     }
+  //   } else {
+  //     return super.on(event_name, listener)
+  //   }
+  // }
+  publish(event_name, _json, opt = {}) {
+    const target = this.parse_target(event_name)
+    if (target.scope === null) {
+      return super.emit(event_name, ...args)
+    } 
+    
+    const cname = target.scope
+    debugEmit(`emit to ${cname}`)
+
+    if (this.rsmq) {
+      const json = JSON.stringify(_json)
+      const channel_name = this.qname(cname)
+      this.emit('enqueue', { channel_name, event_name: target.message, json }, opt)
     } else {
       return super.emit(event_name, ...args)
     }
   }
-  on(event_name, listener) {
-    if (this.channel_name) {
-      const channel_name = this.channel_name
-      this.channel_name = undefined
-      debugOn(`on of ${this.cname(channel_name)}`)
-
-      super.on(`${channel_name}:${event_name}`, listener)
-
-      if (this.rsmq) {
-        debugOn(`${this.cname(channel_name)}:${event_name} listener`)
-        this.emit('listen', {channel_name})
-      }
-    } else {
+  subscribe(event_name, listener) {
+    const target = this.parse_target(event_name)
+    if (target.scope === null) {
       return super.on(event_name, listener)
+    } 
+    
+    const cname = target.scope
+    const channel_name = this.qname(cname)
+    debugOn(`on of ${cname}`)
+
+    super.on(`${channel_name}:${target.message}`, listener)
+
+    if (this.rsmq) {
+      debugOn(`${cname}:${target.message} listener`)
+      this.emit('listen', {channel_name})
     }
   }
 
@@ -92,14 +131,33 @@ class LemonEventEmitter extends EventEmitter {
     return this.to(channel_name)
   }
 
-  purge() {
-    const channel_name = this.channel_name
-    this.channel_name = undefined
-    super.emit('purge', channel_name)
+  purge(cname) {
+    super.emit('purge', this.qname(cname))
   }
 
   cname(qname) {
     return this.cname_table[qname] || '(?)'
+  }
+  qname(cname) {
+    const qname = crypto.createHash('sha1')
+      .update(cname).digest('hex')
+    this.cname_table[qname] = cname
+    return qname
+  }
+  parse_target(name) {
+    if (name[0] !== '@') {
+      return {
+        prefix: null,
+        scope: null,
+        message: name,
+      }
+    }
+    const p = String(name).split(' ')
+    return {
+      prefix: '@',
+      scope: p[0],
+      message: p.slice(1).join(' '),
+    }
   }
 }
 
