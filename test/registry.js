@@ -75,15 +75,29 @@ test.cb('global queue', t => {
     delay: 1,
   }))
   
-  api.on('registry connected', () => {
-    api.subscribe('@mailer send sms', ({text}, done) => {
-      debug('subscribe @mailer send sms:', text)
-      done()
-    })
+  const public_api = new Lemon({
+    vt: 3,
+    delay: 1,
+  })
+  public_api.use(Lemon.Redis({
+    host: '127.0.0.1',
+    port: 6380,
+    ns: 'test.lemon.public',
+    vt: 3,
+    delay: 1,
+  }))
+
+  private_api.subscribe('@mailer send sms', (data, done) => {
+    public_api.publish('@mailer send sms', data)
+    done()
+  })
+  
+  private_api.publish('@mailer send sms', {
+    text: 'hello',
   })
 
-  api.publish('@mailer send sms', {
-    text: 'hello',
+  public_api.subscribe('@mailer send sms', (data, done) => {
+    debug('public_api >>>')
   })
 
   setTimeout(() => {
