@@ -12,21 +12,22 @@ const api = new Lemon({
 })
 api.use(Lemon.Redis({
   host: '127.0.0.1',
-  port: 6379,
-  ns: 'test.server.lemon',
+  port: 6380,
+  ns: 'test.other.server.lemon',
 }))
 api.on('error', error => {
   debug(error)
 })
+api.use('')
 
 app.get('/', (req, res) => {
-  api.publish('@user last activity', {action:'page viewed ' + new Date})
+  // api.publish('@user last activity', {action:'page viewed ' + new Date})
   res.status(200).json({
-    message: '...',
+    message: 'other',
   })
 })
 
 const server = http.createServer(app)
-server.listen(8001)
+server.listen(8003)
 
-debug('http://localhost:8001')
+debug('http://localhost:8003')

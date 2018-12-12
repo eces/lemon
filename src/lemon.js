@@ -7,6 +7,7 @@ const debugScope = require('debug')('lemon:scope')
 const debugEmit = require('debug')('lemon:emit')
 const debugOn = require('debug')('lemon:on')
 const isFunction = require('lodash/isFunction')
+const isObject = require('lodash/isObject')
 const crypto = require('crypto')
 
 class LemonError extends Error {}
@@ -20,6 +21,7 @@ class LemonEventEmitter extends EventEmitter {
     this.has_backend = false
     this.backend_connected = false
     this.cname_table = {}
+    this.scope_table = {}
     this.on('error', error => {
       if (this.listeners('error').length === 0) {
         debug(error)
@@ -43,11 +45,25 @@ class LemonEventEmitter extends EventEmitter {
     if (args.length === 1) {
       // scope
       const middleware = args[0]
-      if (!isFunction(middleware)) 
-        throw new LemonError('middleware not function')
-      middleware(this)
+      if (isFunction(middleware)) {
+        middleware(this)
+      } else if (isObject(middleware) && middleware.name && middleware.postuse) {
+        middleware.postuse(this)
+      } else {
+        throw new LemonError('middleware invalid')
+      }
     } else {
       // scope, middleware
+      const scope = args[0]
+      const middleware = args[1]
+      if (isObject(middleware) && middleware.name && middleware.postuse) {
+        middleware.postuse(this)
+      } else {
+        throw new LemonError('middleware invalid')
+      }
+      this.scope_table[scope] = middleware.name
+      debug(middleware)
+      debug(middleware.name)
     } 
   }
   // emit(event_name, ...args) {
@@ -90,6 +106,16 @@ class LemonEventEmitter extends EventEmitter {
     
     const cname = target.scope
     debugEmit(`emit to ${cname}`)
+    
+    const middleware = this.scope_table[target.scope]
+    if (middleware) {
+      debugEmit(`route to middleware:${middleware}`)
+      const json = JSON.stringify(_json)
+      const channel_name = this.qname(cname)
+      this.publish(`@${middleware} enqueue`, { channel_name, event_name: target.message, json }, opt)
+      
+      return
+    }
 
     if (this.rsmq) {
       const json = JSON.stringify(_json)
@@ -115,6 +141,7 @@ class LemonEventEmitter extends EventEmitter {
       debugOn(`${cname}:${target.message} listener`)
       this.emit('listen', {channel_name})
     }
+    this.emit('subscribe channel added', cname)
   }
 
   /**
@@ -163,3 +190,5 @@ class LemonEventEmitter extends EventEmitter {
 
 module.exports = LemonEventEmitter
 module.exports.Redis = require('./redis')
+module.exports.RegistryClient = require('./registry-client')
+module.exports.RegistryServer = require('./registry-server')

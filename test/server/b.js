@@ -15,6 +15,9 @@ api.use(Lemon.Redis({
   port: 6379,
   ns: 'test.server.lemon',
 }))
+api.on('error', error => {
+  debug(error)
+})
 
 api.subscribe('@user last activity', (message, done) => {
   debug('last activity:', message)
