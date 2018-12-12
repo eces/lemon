@@ -87,10 +87,14 @@ test.cb('global queue', t => {
     delay: 1,
   }))
 
-  private_api.subscribe('@mailer send sms', (data, done) => {
-    public_api.publish('@mailer send sms', data)
-    done()
-  })
+  // 1. manual way
+  // private_api.subscribe('@mailer send sms', (data, done) => {
+  //   public_api.publish('@mailer send sms', data)
+  //   done()
+  // })
+
+  // 2. shorthand way
+  private_api.use('@mailer', public_api)
   
   private_api.publish('@mailer send sms', {
     text: 'hello',

@@ -22,6 +22,8 @@ class LemonEventEmitter extends EventEmitter {
     this.backend_connected = false
     this.cname_table = {}
     this.scope_table = {}
+    this.proxy_table = {}
+    this.proxy_subscribed_table = {}
     this.on('error', error => {
       if (this.listeners('error').length === 0) {
         debug(error)
@@ -56,14 +58,14 @@ class LemonEventEmitter extends EventEmitter {
       // scope, middleware
       const scope = args[0]
       const middleware = args[1]
-      if (isObject(middleware) && middleware.name && middleware.postuse) {
+      if (isObject(middleware) && middleware.lemonized) {
+        this.proxy_table[scope] = middleware
+      } else if (isObject(middleware) && middleware.name && middleware.postuse) {
         middleware.postuse(this)
+        this.scope_table[scope] = middleware.name
       } else {
         throw new LemonError('middleware invalid')
       }
-      this.scope_table[scope] = middleware.name
-      debug(middleware)
-      debug(middleware.name)
     } 
   }
   // emit(event_name, ...args) {
@@ -114,6 +116,21 @@ class LemonEventEmitter extends EventEmitter {
       const channel_name = this.qname(cname)
       this.publish(`@${middleware} enqueue`, { channel_name, event_name: target.message, json }, opt)
       
+      return
+    }
+
+    const proxy = this.proxy_table[target.scope]
+    if (proxy) {
+      if (this.proxy_subscribed_table[event_name]) {
+        // already subscribed
+        return
+      }
+      this.subscribe(event_name, (data, done) => {
+        proxy.publish(event_name, data)
+        done()
+      })
+      this.proxy_subscribed_table[event_name] = true
+
       return
     }
 
