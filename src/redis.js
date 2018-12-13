@@ -47,19 +47,36 @@ const Redis = (_options) => {
         }
       })
     })
-    that.on('status', ({channel_name}, callback = null) => {
+    that.on('update channel status', ({channel_name}, callback = null) => {
       const qname = that.qname(channel_name)
       that.rsmq.getQueueAttributes({qname}, (err, r) => {
         if (callback) {
           return callback(err, r)
         } else {
-          that.emit('status:result', err, {
+          that.emit('channel status updated', err, {
             VisibilityTimeout: r.vt,
             Delay: r.delay,
             ReceiveCount: r.totalrecv,
             SentCount: r.totalsent,
             MessagesAvailable: r.msgs - r.hiddenmsgs,
             MessagesInFlight: r.hiddenmsgs,
+          })
+        }
+      })
+    })
+    that.on('update queue status', (callback = null) => {
+      that.rsmq.listQueues((err, r) => {
+        if (callback) {
+          return callback(err, r)
+        } else {
+          const queues = r.map( qname => {
+            return {
+              name: that.cname(qname),
+              id: qname,
+            }
+          })
+          that.emit('queue status updated', err, {
+            queues,
           })
         }
       })

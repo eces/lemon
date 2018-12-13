@@ -52,10 +52,10 @@ test.cb('user -> {notify, stat} manager', t => {
   }, {delay: 1})
 
   setInterval(() => {
-    api.emit('status', {channel_name: '@user'})
+    api.emit('update channel status', {channel_name: '@user'})
   }, 1000)
-  api.on('status:result', (err, r) => {
-    debug('status:result', err, r.MessagesAvailable, r.MessagesInFlight)
+  api.on('channel status updated', (err, r) => {
+    debug('channel status updated', err, r.MessagesAvailable, r.MessagesInFlight)
   })
 
   setTimeout(() => {
