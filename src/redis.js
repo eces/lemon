@@ -118,12 +118,12 @@ const Redis = (_options) => {
           }
           listening_table[channel_name] = true
           debugOn(`emit ${_channel_name}:ready`)
-          // that.on(`${_channel_name}:ready`, () => {
-          //   setInterval(() => {
-          //     debug('scheduled dequeue on', _channel_name)
-          //     that.emit('dequeue', _channel_name)
-          //   }, options.vt * 1000 * 5)
-          // })
+          that.on(`${_channel_name}:ready`, () => {
+            setInterval(() => {
+              debug('scheduled dequeue on', _channel_name)
+              that.emit('dequeue', _channel_name)
+            }, options.vt * 1000)
+          })
           that.emit(`${_channel_name}:ready`)
 
           debugOn(`try dequeue for ${that.cname(_channel_name)}`)
@@ -156,6 +156,7 @@ const Redis = (_options) => {
       const qname = channel_name
       const message = JSON.stringify([event_name, json])
       promised_queue(channel_name, () => {
+        opt.delay = +Number(opt.delay/1000).toFixed()
         debugEmit(`enqueue`, { qname, message, delay: opt.delay, })
         that.rsmq.sendMessage({ qname, message, delay: opt.delay, }, (err, r) => {
           if (err) {
