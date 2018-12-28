@@ -50,6 +50,8 @@ const Redis = (_options) => {
     that.on('update channel status', ({channel_name}, callback = null) => {
       const qname = that.qname(channel_name)
       that.rsmq.getQueueAttributes({qname}, (err, r) => {
+        if (!r) return
+
         if (callback) {
           return callback(err, r)
         } else {
@@ -82,7 +84,7 @@ const Redis = (_options) => {
       })
     })
 
-    const promised_queue = (channel_name, callback) => {
+    const promised_queue = (channel_name, opt, callback) => {
       that.rsmq.createQueue({ qname: channel_name }, (err, r) => {
         if (err && err.name != 'queueExists') {
           return that.emit('error', err)
@@ -90,10 +92,15 @@ const Redis = (_options) => {
         if (r === 1) {
           debugOn(`queue created ${that.cname(channel_name)}`)
         }
+        debug({
+          qname: channel_name,
+          vt: (opt.vt / 1000) || options.vt,
+          delay: (opt.delay / 1000) || options.delay,
+        })
         that.rsmq.setQueueAttributes({
           qname: channel_name,
-          vt: options.vt,
-          delay: options.delay,
+          vt: (opt.vt / 1000) || options.vt,
+          delay: (opt.delay / 1000) || options.delay,
         }, (err, r) => {
           if (err) {
             that.emit('error', err)
@@ -103,12 +110,12 @@ const Redis = (_options) => {
       })
     }
 
-    that.on('listen', ({channel_name}) => {
+    that.on('listen', ({channel_name}, opt) => {
       if (listening_table[channel_name]) {
         return
       }
       
-      promised_queue(channel_name, () => {
+      promised_queue(channel_name, opt, () => {
         const _channel_name = channel_name
         debugOn(`events listening on ${options.ns}:rt:${_channel_name}`)
         redis.subscribe(`${options.ns}:rt:${_channel_name}`, (err, count) => {
@@ -122,7 +129,7 @@ const Redis = (_options) => {
             setInterval(() => {
               debug('scheduled dequeue on', _channel_name)
               that.emit('dequeue', _channel_name)
-            }, options.vt * 1000)
+            }, opt.vt || options.vt * 1000)
           })
           that.emit(`${_channel_name}:ready`)
 
@@ -155,8 +162,8 @@ const Redis = (_options) => {
     that.on('enqueue', ({channel_name, event_name, json}, opt) => {
       const qname = channel_name
       const message = JSON.stringify([event_name, json])
-      promised_queue(channel_name, () => {
-        opt.delay = +Number(opt.delay/1000).toFixed()
+      promised_queue(channel_name, {}, () => {
+        opt.delay = +Number(opt.delay/1000).toFixed() || 0
         debugEmit(`enqueue`, { qname, message, delay: opt.delay, })
         that.rsmq.sendMessage({ qname, message, delay: opt.delay, }, (err, r) => {
           if (err) {

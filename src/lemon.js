@@ -9,6 +9,7 @@ const debugOn = require('debug')('lemon:on')
 const isFunction = require('lodash/isFunction')
 const isObject = require('lodash/isObject')
 const crypto = require('crypto')
+const duration = require('parse-duration')
 
 class LemonError extends Error {}
 
@@ -137,12 +138,12 @@ class LemonEventEmitter extends EventEmitter {
     if (this.rsmq) {
       const json = JSON.stringify(_json)
       const channel_name = this.qname(cname)
-      this.emit('enqueue', { channel_name, event_name: target.message, json }, opt)
+      this.emit('enqueue', { channel_name, event_name: target.message, json }, this.parse_option(opt))
     } else {
       return super.emit(event_name, ...args)
     }
   }
-  subscribe(event_name, listener) {
+  subscribe(event_name, listener, opt = {}) {
     const target = this.parse_target(event_name)
     if (target.scope === null) {
       return super.on(event_name, listener)
@@ -156,7 +157,7 @@ class LemonEventEmitter extends EventEmitter {
 
     if (this.rsmq) {
       debugOn(`${cname}:${target.message} listener`)
-      this.emit('listen', {channel_name})
+      this.emit('listen', {channel_name}, this.parse_option(opt))
     }
     this.emit('subscribe channel added', cname)
   }
@@ -202,6 +203,23 @@ class LemonEventEmitter extends EventEmitter {
       scope: p[0],
       message: p.slice(1).join(' '),
     }
+  }
+  parse_option(opt) {
+    if (opt.vt) {
+      if (isFinite(+opt.vt)) {
+        // ok
+      } else {
+        opt.vt = duration(opt.vt)
+      }
+    }
+    if (opt.delay) {
+      if (isFinite(+opt.delay)) {
+        // ok
+      } else {
+        opt.delay = duration(opt.delay)
+      }
+    }
+    return opt
   }
 }
 
