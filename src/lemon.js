@@ -225,5 +225,5 @@ class LemonEventEmitter extends EventEmitter {
 
 module.exports = LemonEventEmitter
 module.exports.Redis = require('./redis')
-module.exports.RegistryClient = require('./registry-client')
-module.exports.RegistryServer = require('./registry-server')
+// module.exports.RegistryClient = require('./registry-client')
+// module.exports.RegistryServer = require('./registry-server')
