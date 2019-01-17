@@ -135,7 +135,7 @@ class LemonEventEmitter extends EventEmitter {
       return
     }
 
-    if (this.rsmq) {
+    if (this.has_backend) {
       const json = JSON.stringify(_json)
       const channel_name = this.qname(cname)
       this.emit('enqueue', { channel_name, event_name: target.message, json }, this.parse_option(opt))
@@ -155,7 +155,7 @@ class LemonEventEmitter extends EventEmitter {
 
     super.on(`${channel_name}:${target.message}`, listener)
 
-    if (this.rsmq) {
+    if (this.has_backend) {
       debugOn(`${cname}:${target.message} listener`)
       this.emit('listen', {channel_name}, this.parse_option(opt))
     }
